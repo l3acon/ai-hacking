@@ -1,0 +1,46 @@
+---
+- name: Sync AAP Project
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  
+  vars:
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') }}"
+    aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
+    aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
+    aap_token: "{{ lookup('env', 'AAP_TOKEN') }}"
+    project_name: "ai-hacking"
+    validate_certs: true
+
+  tasks:
+    - name: Verify AAP credentials are set
+      ansible.builtin.assert:
+        that:
+          - aap_hostname | length > 0
+          - (aap_token | length > 0) or (aap_username | length > 0 and aap_password | length > 0)
+        fail_msg: "AAP credentials not set. Set AAP_HOSTNAME and either AAP_TOKEN or AAP_USERNAME/AAP_PASSWORD"
+        success_msg: "AAP credentials verified"
+
+    - name: Update project in AAP
+      ansible.controller.project_update:
+        project: "{{ project_name }}"
+        wait: true
+        controller_host: "{{ aap_hostname }}"
+        controller_username: "{{ aap_username | default(omit) }}"
+        controller_password: "{{ aap_password | default(omit) }}"
+        controller_oauthtoken: "{{ aap_token | default(omit) }}"
+        validate_certs: "{{ validate_certs }}"
+      register: project_update
+
+    - name: Display project sync results
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Project Sync Complete
+          ========================================
+          Project: {{ project_name }}
+          Status: {{ project_update.status | default('success') }}
+          
+          The project has been synced with the latest changes from git.
+          All playbooks are now available in AAP.
+          ========================================

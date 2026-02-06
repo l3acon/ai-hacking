@@ -1,0 +1,56 @@
+---
+- name: List AAP Job Templates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  
+  vars:
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') }}"
+    aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
+    aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
+    aap_token: "{{ lookup('env', 'AAP_TOKEN') }}"
+    validate_certs: true
+
+  tasks:
+    - name: Get list of job templates
+      ansible.builtin.uri:
+        url: "{{ aap_hostname }}/api/v2/job_templates/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ aap_token }}"
+        validate_certs: "{{ validate_certs }}"
+        return_content: true
+      when: aap_token | length > 0
+      register: templates_token
+
+    - name: Get list of job templates (username/password)
+      ansible.builtin.uri:
+        url: "{{ aap_hostname }}/api/v2/job_templates/"
+        method: GET
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        return_content: true
+      when: aap_token | length == 0
+      register: templates_basic
+
+    - name: Set templates variable
+      ansible.builtin.set_fact:
+        templates: "{{ (templates_token.json | default(templates_basic.json)).results }}"
+
+    - name: Display job templates
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          AAP Job Templates
+          ========================================
+          {% for template in templates %}
+          {{ loop.index }}. {{ template.name }}
+             ID: {{ template.id }}
+             Playbook: {{ template.playbook }}
+             Survey Enabled: {{ template.survey_enabled }}
+          {% endfor %}
+          
+          Total: {{ templates | length }} templates
+          ========================================

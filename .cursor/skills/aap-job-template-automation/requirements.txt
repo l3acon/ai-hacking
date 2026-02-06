@@ -1,0 +1,7 @@
+# Python dependencies for AAP Job Template Automation skill
+
+# YAML parsing
+pyyaml>=6.0
+
+# HTTP client for AAP API
+requests>=2.28.0
