@@ -1,0 +1,12 @@
+---
+- name: Setup Apache Web Server on RHEL using Role
+  hosts: all
+  become: true
+  vars:
+    # Set to true to use the server's IP address instead of FQDN
+    use_ip_address: false
+    # Customize the welcome message displayed on the web page
+    welcome_message: "Apache Web Server is Running!"
+  
+  roles:
+    - apache_webserver

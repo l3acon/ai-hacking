@@ -1,0 +1,4 @@
+---
+# Default variables for apache_webserver role
+use_ip_address: false
+welcome_message: "Apache Web Server is Running!"
