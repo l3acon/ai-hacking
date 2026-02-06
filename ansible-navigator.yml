@@ -1,0 +1,29 @@
+---
+ansible-navigator:
+  ansible-runner:
+    artifact-dir: navigator-output/runner/
+    rotate-artifacts-count: 10
+  execution-environment:
+    container-engine: podman
+    # TODO switch back to "latest" tag when this tag is promoted
+    image: quay.io/ansible-product-demos/apd-ee-25:20251216
+    pull:
+      policy: missing
+    environment-variables:
+      pass:
+        - AAP_HOSTNAME
+        - AAP_USERNAME
+        - AAP_PASSWORD
+        - AAP_TOKEN
+        - AWS_ACCESS_KEY_ID
+        - AWS_SECRET_ACCESS_KEY
+        - INFOBLOX_HOST
+        - INFOBLOX_USERNAME
+        - INFOBLOX_PASSWORD
+  logging:
+    level: info
+    append: false
+    file: navigator-output/ansible-navigator.log
+  playbook-artifact:
+    enable: true
+    save-as: navigator-output/{playbook_name}-artifact-{time_stamp}.json
