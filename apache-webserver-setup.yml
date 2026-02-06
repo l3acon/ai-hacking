@@ -1,0 +1,151 @@
+---
+- name: Setup Apache Web Server on RHEL
+  hosts: all
+  become: true
+  vars:
+    # Set to true to use the server's IP address instead of FQDN
+    use_ip_address: false
+
+  tasks:
+    - name: Install Apache (httpd) package
+      ansible.builtin.dnf:
+        name: httpd
+        state: present
+
+    - name: Install firewalld if not present
+      ansible.builtin.dnf:
+        name: firewalld
+        state: present
+
+    - name: Ensure firewalld is started and enabled
+      ansible.builtin.systemd:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Create example index.html
+      ansible.builtin.copy:
+        content: |
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Welcome to {{ ansible_hostname }}</title>
+              <style>
+                  body {
+                      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                      max-width: 800px;
+                      margin: 50px auto;
+                      padding: 20px;
+                      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                      color: #fff;
+                  }
+                  .container {
+                      background: rgba(255, 255, 255, 0.1);
+                      padding: 40px;
+                      border-radius: 10px;
+                      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+                      backdrop-filter: blur(4px);
+                      border: 1px solid rgba(255, 255, 255, 0.18);
+                  }
+                  h1 {
+                      text-align: center;
+                      font-size: 2.5em;
+                      margin-bottom: 20px;
+                      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                  }
+                  .info {
+                      background: rgba(255, 255, 255, 0.2);
+                      padding: 20px;
+                      border-radius: 5px;
+                      margin-top: 20px;
+                  }
+                  .info p {
+                      margin: 10px 0;
+                      font-size: 1.1em;
+                  }
+                  .success {
+                      text-align: center;
+                      font-size: 1.2em;
+                      margin-top: 20px;
+                      padding: 15px;
+                      background: rgba(72, 187, 120, 0.3);
+                      border-radius: 5px;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🎉 Apache Web Server is Running!</h1>
+                  <div class="info">
+                      <p><strong>Hostname:</strong> {{ ansible_hostname }}</p>
+                      <p><strong>FQDN:</strong> {{ ansible_fqdn }}</p>
+                      <p><strong>Operating System:</strong> {{ ansible_distribution }} {{ ansible_distribution_version }}</p>
+                      <p><strong>Server Time:</strong> {{ ansible_date_time.date }} {{ ansible_date_time.time }}</p>
+                  </div>
+                  <div class="success">
+                      ✅ Your Apache web server has been successfully configured with Ansible!
+                  </div>
+              </div>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Ensure SELinux context is correct for web content
+      ansible.builtin.command: restorecon -Rv /var/www/html
+      changed_when: false
+      when: ansible_selinux.status == "enabled"
+
+    - name: Start and enable httpd service
+      ansible.builtin.systemd:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: Open firewall port 80 (http)
+      ansible.posix.firewalld:
+        service: http
+        permanent: true
+        state: enabled
+        immediate: true
+
+    - name: Gather network facts
+      ansible.builtin.setup:
+        gather_subset:
+          - network
+
+    - name: Display server access information
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Apache Web Server Setup Complete!
+          ========================================
+          
+          Your web server is now running and accessible at:
+          
+          {% if use_ip_address %}
+          🌐 http://{{ ansible_default_ipv4.address }}
+          {% else %}
+          🌐 http://{{ ansible_fqdn }}
+          {% if ansible_fqdn != ansible_hostname %}
+          🌐 http://{{ ansible_hostname }}
+          {% endif %}
+          🌐 http://{{ ansible_default_ipv4.address }}
+          {% endif %}
+          
+          Server Details:
+          - Hostname: {{ ansible_hostname }}
+          - FQDN: {{ ansible_fqdn }}
+          - IP Address: {{ ansible_default_ipv4.address }}
+          - Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          
+          Firewall: Port 80 is OPEN
+          Service: httpd is RUNNING and ENABLED
+          
+          ========================================
+          Open a web browser and navigate to any of the URLs above!
+          ========================================
