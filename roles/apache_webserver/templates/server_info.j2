@@ -1,0 +1,28 @@
+========================================
+Apache Web Server Setup Complete!
+========================================
+
+Your web server is now running and accessible at:
+
+{% if use_ip_address %}
+🌐 http://{{ ansible_default_ipv4.address }}
+{% else %}
+🌐 http://{{ ansible_fqdn }}
+{% if ansible_fqdn != ansible_hostname %}
+🌐 http://{{ ansible_hostname }}
+{% endif %}
+🌐 http://{{ ansible_default_ipv4.address }}
+{% endif %}
+
+Server Details:
+- Hostname: {{ ansible_hostname }}
+- FQDN: {{ ansible_fqdn }}
+- IP Address: {{ ansible_default_ipv4.address }}
+- Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+Firewall: Port 80 is OPEN
+Service: httpd is RUNNING and ENABLED
+
+========================================
+Open a web browser and navigate to any of the URLs above!
+========================================
