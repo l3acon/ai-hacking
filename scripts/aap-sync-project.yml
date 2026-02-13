@@ -5,7 +5,7 @@
   gather_facts: false
   
   vars:
-    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') }}"
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') | regex_replace('/$', '') }}"
     aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
     aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
     aap_token: "{{ lookup('env', 'AAP_TOKEN') }}"

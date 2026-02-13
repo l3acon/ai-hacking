@@ -3,19 +3,26 @@
   hosts: localhost
   connection: local
   gather_facts: false
-  
+
   vars:
-    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') }}"
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') | regex_replace('/$', '') }}"
     aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
     aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
     aap_token: "{{ lookup('env', 'AAP_TOKEN') }}"
     validate_certs: true
 
   tasks:
-    - name: Get list of job templates
+    - name: Verify AAP credentials are set
+      ansible.builtin.assert:
+        that:
+          - aap_hostname | length > 0
+          - (aap_token | length > 0) or (aap_username | length > 0 and aap_password | length > 0)
+        fail_msg: "AAP credentials not set. Set AAP_HOSTNAME and either AAP_TOKEN or AAP_USERNAME/AAP_PASSWORD"
+        success_msg: "AAP credentials verified"
+
+    - name: Query job templates (token auth)
       ansible.builtin.uri:
-        url: "{{ aap_hostname }}/api/v2/job_templates/"
-        method: GET
+        url: "{{ aap_hostname }}/api/controller/v2/job_templates/"
         headers:
           Authorization: "Bearer {{ aap_token }}"
         validate_certs: "{{ validate_certs }}"
@@ -23,10 +30,9 @@
       when: aap_token | length > 0
       register: templates_token
 
-    - name: Get list of job templates (username/password)
+    - name: Query job templates (basic auth)
       ansible.builtin.uri:
-        url: "{{ aap_hostname }}/api/v2/job_templates/"
-        method: GET
+        url: "{{ aap_hostname }}/api/controller/v2/job_templates/"
         user: "{{ aap_username }}"
         password: "{{ aap_password }}"
         force_basic_auth: true
@@ -35,11 +41,9 @@
       when: aap_token | length == 0
       register: templates_basic
 
-    - name: Set templates variable
-      ansible.builtin.set_fact:
-        templates: "{{ (templates_token.json | default(templates_basic.json)).results }}"
-
     - name: Display job templates
+      vars:
+        templates: "{{ (templates_token.json | default(templates_basic.json)).results }}"
       ansible.builtin.debug:
         msg: |
           ========================================
@@ -47,10 +51,9 @@
           ========================================
           {% for template in templates %}
           {{ loop.index }}. {{ template.name }}
-             ID: {{ template.id }}
-             Playbook: {{ template.playbook }}
-             Survey Enabled: {{ template.survey_enabled }}
+             Playbook: {{ template.playbook | default('N/A') }}
+             Survey Enabled: {{ template.survey_enabled | default(false) }}
           {% endfor %}
-          
+
           Total: {{ templates | length }} templates
           ========================================

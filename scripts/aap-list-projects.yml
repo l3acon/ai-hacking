@@ -1,0 +1,28 @@
+---
+- name: List AAP Projects
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') | regex_replace('/$', '') }}"
+    aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
+    aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
+    validate_certs: true
+  tasks:
+    - name: Query projects
+      ansible.builtin.uri:
+        url: "{{ aap_hostname }}/api/controller/v2/projects/"
+        user: "{{ aap_username }}"
+        password: "{{ aap_password }}"
+        force_basic_auth: true
+        validate_certs: "{{ validate_certs }}"
+        return_content: true
+      register: projects
+
+    - name: Show projects
+      ansible.builtin.debug:
+        msg: |
+          AAP Projects:
+          {% for project in projects.json.results %}
+          - {{ project.name }} (id: {{ project.id }})
+          {% endfor %}

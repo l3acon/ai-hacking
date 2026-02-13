@@ -25,5 +25,5 @@ ansible-navigator:
     append: false
     file: navigator-output/ansible-navigator.log
   playbook-artifact:
-    enable: true
+    enable: false
     save-as: navigator-output/{playbook_name}-artifact-{time_stamp}.json

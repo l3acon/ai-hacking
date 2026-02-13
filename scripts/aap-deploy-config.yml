@@ -1,0 +1,75 @@
+---
+- name: Generate and Deploy AAP Job Template from Playbook
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') | regex_replace('/$', '') }}"
+    aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
+    aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
+    aap_token: "{{ lookup('env', 'AAP_TOKEN') }}"
+    validate_certs: true
+    # Override these with -e at runtime
+    playbook_file: ""
+    aap_project: "ai-hacking"
+    aap_inventory: "Demo Inventory"
+
+  tasks:
+    - name: Verify required variables
+      ansible.builtin.assert:
+        that:
+          - aap_hostname | length > 0
+          - (aap_token | length > 0) or (aap_username | length > 0 and aap_password | length > 0)
+          - playbook_file | length > 0
+        fail_msg: >-
+          Missing required variables.
+          Set AAP_HOSTNAME + credentials (AAP_TOKEN or AAP_USERNAME/AAP_PASSWORD),
+          and pass -e playbook_file=<filename>.
+        success_msg: "Prerequisites verified"
+
+    - name: Generate job template config from playbook
+      ansible.builtin.set_fact:
+        template: >-
+          {{ lookup('file', playbook_dir + '/../' + playbook_file)
+             | playbook_to_job_template(
+                 playbook=playbook_file,
+                 project=aap_project,
+                 inventory=aap_inventory) }}
+
+    - name: Display generated config
+      ansible.builtin.debug:
+        msg: "{{ template | to_nice_yaml }}"
+
+    - name: Deploy job template to AAP
+      ansible.controller.job_template:
+        name: "{{ template.name }}"
+        job_type: "{{ template.job_type }}"
+        inventory: "{{ template.inventory }}"
+        project: "{{ template.project }}"
+        playbook: "{{ template.playbook }}"
+        ask_variables_on_launch: "{{ template.ask_variables_on_launch | default(true) }}"
+        survey_enabled: "{{ template.survey_enabled | default(false) }}"
+        survey_spec: "{{ template.survey | default(omit) }}"
+        state: present
+        controller_host: "{{ aap_hostname }}"
+        controller_username: "{{ aap_username | default(omit) }}"
+        controller_password: "{{ aap_password | default(omit) }}"
+        controller_oauthtoken: "{{ aap_token | default(omit) }}"
+        validate_certs: "{{ validate_certs }}"
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Job Template Deployed Successfully
+          ========================================
+
+          Name:      {{ template.name }}
+          Playbook:  {{ template.playbook }}
+          Project:   {{ template.project }}
+          Inventory: {{ template.inventory }}
+          Survey:    {{ 'Enabled' if template.survey_enabled | default(false) else 'Disabled' }}
+
+          View in AAP: {{ aap_hostname }}/#/templates
+          ========================================

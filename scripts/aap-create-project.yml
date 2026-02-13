@@ -1,0 +1,34 @@
+---
+- name: Create ai-hacking project in AAP
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aap_hostname: "{{ lookup('env', 'AAP_HOSTNAME') | regex_replace('/$', '') }}"
+    aap_username: "{{ lookup('env', 'AAP_USERNAME') }}"
+    aap_password: "{{ lookup('env', 'AAP_PASSWORD') }}"
+    aap_token: "{{ lookup('env', 'AAP_TOKEN') }}"
+    validate_certs: true
+    project_name: "ai-hacking"
+    scm_url: "https://github.com/l3acon/ai-hacking.git"
+    scm_branch: "master"
+  tasks:
+    - name: Create project
+      ansible.controller.project:
+        name: "{{ project_name }}"
+        organization: "Default"
+        scm_type: git
+        scm_url: "{{ scm_url }}"
+        scm_branch: "{{ scm_branch }}"
+        scm_update_on_launch: true
+        state: present
+        wait: true
+        controller_host: "{{ aap_hostname }}"
+        controller_username: "{{ aap_username | default(omit) }}"
+        controller_password: "{{ aap_password | default(omit) }}"
+        controller_oauthtoken: "{{ aap_token | default(omit) }}"
+        validate_certs: "{{ validate_certs }}"
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: "Project '{{ project_name }}' created and synced successfully"
